@@ -19,7 +19,6 @@ async def me(user: dict = Depends(get_authenticated_user)):
     """
     Verify if request is authenticated
     """
-    # return {"Authenticated": user.is_authenticated, "username": user.username}
     return user
 
 
