@@ -5,14 +5,21 @@ from app.auth.schemas import UserCreate, UserBase, AuthLogin
 from app.auth.password import get_password_hash, verify_password
 from app.auth.jwt import JWTBackend
 from app.core.error_messages import get_error_message
+from app.cache import RedisBackend
+from app import settings
 
 
 class AuthService:
-    def __init__(self, crud: AuthCRUD = Depends(get_auth_crud)):
+    def __init__(
+            self,
+            crud: AuthCRUD = Depends(get_auth_crud),
+            cache: RedisBackend = Depends(RedisBackend)
+):
         self.crud = crud
+        self.cache = cache
         self.jwt = JWTBackend()
 
-    async def register(self, data: UserCreate) -> tuple[dict, UserBase]:
+    async def register(self, data: UserCreate) -> UserBase:
         if await self._email_exists(data.email):
             raise HTTPException(400, detail=get_error_message("existing email"))
         # if await self._username_exists(data.username):
@@ -20,8 +27,8 @@ class AuthService:
         hashed_password = get_password_hash(data.password)
         user_base = await self.crud.create(data, hashed_password)
         # asyncio.create_task(self._request_email_confirmation(new_user.email))
-        tokens = self.jwt.create_tokens(user_base.dict())
-        return tokens, user_base
+        # tokens = self.jwt.create_tokens(user_base.dict())
+        return user_base
 
     async def login(self, data: AuthLogin, ip: str) -> dict:
         """POST /login
@@ -36,8 +43,8 @@ class AuthService:
                 404 - user doesn't exist.
                 429 - bruteforce attempt.
         """
-        # if await self._is_bruteforce(ip, user.email):
-        #     raise HTTPException(429, detail="Too many requests")
+        if await self._is_bruteforce(ip, data.email):
+            raise HTTPException(429, detail="Too many requests")
 
         user = await self.crud.get_by_email(data.email)
 
@@ -84,5 +91,40 @@ class AuthService:
         if user is None or not user.is_active:
             raise HTTPException(401)
 
-        payload = item.dict(include={'username', 'email', 'id'})
-        return self._auth_backend.create_access_token(payload)
+        payload = user.dict(include={'username', 'email', 'id'})
+        return self.jwt.create_access_token(payload)
+
+    async def _is_bruteforce(self, ip: str, email: str) -> bool:
+        """
+        Check if the ip is in the bruteforce list.
+
+        Args:
+            ip (str): The ip to check.
+            login (str): The login to check.
+
+        Returns:
+            bool: True if the ip is in the bruteforce list.
+        """
+        timeout_key = f"users:login:timeout:{email}:{ip}"
+        timeout = await self.cache.get(timeout_key)
+
+        if timeout is not None:
+            return True  # pragma: no cover
+
+        rate_key = f"users:login:rate:{email}:{ip}"
+        rate = await self.cache.get(rate_key)
+        # logger.info(f"------------- users:login:rate = {rate}")
+
+        if rate is not None:
+            rate = int(rate)  # pragma: no cover
+            if rate > settings.login_ratelimit:  # pragma: no cover
+                await self.cache.set(timeout_key, 1, ex=60)  # pragma: no cover     ■ "set" is not a known member of "None"
+                # logger.info(
+                #     f"bruteforce_login ip={ip} login={login}"
+                # )  # pragma: no cover
+                return True  # pragma: no cover
+        else:
+            await self.cache.set(rate_key, 1, ex=60)
+
+        await self.cache.incr(rate_key)
+        return False

@@ -28,11 +28,10 @@ async def me(user: dict = Depends(get_authenticated_user)):
     status_code=http_status.HTTP_201_CREATED
 )
 async def register(
-        response: Response,
         data: UserCreate,
         service: AuthService = Depends(AuthService)
 ):
-    tokens, user = await service.register(data)
+    user = await service.register(data)
     return user
 
 
