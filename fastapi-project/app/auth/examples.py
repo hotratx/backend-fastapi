@@ -5,3 +5,8 @@ ex_user_create = {
     "username": "abajuba",
     "password": "secret123"
 }
+
+ex_user_login = {
+    "email": "abajuba@gmail.com",
+    "password": "secret123"
+}

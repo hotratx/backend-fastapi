@@ -3,12 +3,24 @@ from fastapi import status as http_status
 
 from app.core.models import StatusMessage
 from app.auth.crud import AuthCRUD
-from app.auth.dependencies import get_auth_crud
+from app.auth.dependencies import get_auth_crud, get_authenticated_user
 from app.auth.schemas import UserCreate, UserBase, JWTPairSchema, AuthLogin
 from app.auth.authentication import AuthService
 from app.auth.transport import CookieTransport
 
 router = APIRouter()
+
+
+@router.get(
+    "/me",
+    response_model=UserBase,
+)
+async def me(user: dict = Depends(get_authenticated_user)):
+    """
+    Verify if request is authenticated
+    """
+    # return {"Authenticated": user.is_authenticated, "username": user.username}
+    return user
 
 
 @router.post(
@@ -66,7 +78,7 @@ async def refresh_access_token(
         raise HTTPException(401)
 
     access_token = await service.refresh_access_token(refresh_token)
-    set_access_token_in_response(response, access_token)
+    CookieTransport.set_access_token_in_response(response, access_token)
     return {"access": access_token}
 
 

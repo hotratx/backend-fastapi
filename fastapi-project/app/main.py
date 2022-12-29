@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import settings
 from app.core.models import HealthCheck
@@ -11,6 +12,14 @@ app = FastAPI(
     version=settings.version,
     openapi_url=f"{settings.api_v1_prefix}/openapi.json",
     debug=settings.debug
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

@@ -68,7 +68,7 @@ class JWTBackend:
         else:
             return False
 
-    async def decode_token(self, token: str):
+    async def decode_token(self, token: str) -> dict:
         if token:
             try:
                 payload = jwt.decode(
@@ -76,7 +76,6 @@ class JWTBackend:
                     self._private_key,
                     algorithms=JWT_ALGORITHM,
                 )
-                print(f"RESULTADO DO DECODE JWT PAYLOAD: {payload}")
                 iat = datetime.utcfromtimestamp(int(payload.get("iat")))
                 # checks = await asyncio.gather(
                 #      *(
@@ -87,7 +86,6 @@ class JWTBackend:
                 #  )
                 # if any(checks):
                 #      return None
-
                 return payload
             except:  # noqa E722
                 return None

@@ -1,6 +1,6 @@
 from pydantic import EmailStr
 from sqlmodel import Field, SQLModel
-from app.auth.examples import ex_user_create
+from app.auth.examples import ex_user_create, ex_user_login
 from app.core.models import UUIDModel
 
 
@@ -36,3 +36,6 @@ class JWTPairSchema(SQLModel):
 class AuthLogin(SQLModel):
     email: EmailStr
     password: str
+
+    class Config:
+        schema_extra = {"example": ex_user_login}
