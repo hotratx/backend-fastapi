@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  web:
+    build: ./fastapi-project
+    command: uvicorn app.main:app --reload --workers 1 --host 0.0.0.0 --port 8000
+    volumes:
+      - ./fastapi-project/:/app/
+    ports:
+      - 8000:8000
+    env_file:
+      - ./fastapi-project/.env
+    depends_on:
+      - postgres
+
+  postgres:
+    restart: unless-stopped
+    image: postgres:14.5-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    expose:
+      - 5432
+    env_file:
+      - ./fastapi-project/.env
+
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+
+volumes:
+  postgres_data:
